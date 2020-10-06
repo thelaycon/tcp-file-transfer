@@ -44,7 +44,7 @@ $
 
 ```
 
-#Increasing the bytes size to read into Buffer
+# Increasing the bytes size to read into Buffer
 
 Using the `--buff` option to specify the size of bytes your server would be receiving at a time. Increasing the value leads to increase in file transfer speed.
 
