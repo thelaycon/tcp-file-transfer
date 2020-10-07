@@ -17,7 +17,6 @@ def recvHeader(sock, length):
         rem = reader.read()
     except:
         rem = reader.read()
-    print(header, rem)
     return [header, rem]
 
 
@@ -117,7 +116,7 @@ def client(ip, port, name, path, headerLength):
         header = pickle.dumps(header)
 
         if len(header) > headerLength:
-            raise ValueError("Content length too short")
+            raise ValueError("Header length too short\n Use --header flag to increase header length")
 
         msg = header +  msg
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -141,7 +140,7 @@ if __name__ == '__main__':
     parser.add_argument("--path", help="Path to file to send", type=str)
     parser.add_argument("--port", help="Port to listen to or connect to. Default:1069", default=1069, type=int)
     parser.add_argument("--ip", help="IP Address to listen to or connect to. Default:127.0.0.1", default="127.0.0.1", type=str)
-    parser.add_argument("--header", help="Header length: len([file_name, size])++. Default:40", default=100, type=int)
+    parser.add_argument("--header", help="Header length: len([file_name, size])++. Default:50", default=50, type=int)
     parser.add_argument("--buff", help="Buffer size for storing data", type=int, default=4000)
 
     # Parse arguments

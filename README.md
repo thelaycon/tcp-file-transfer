@@ -25,8 +25,7 @@ $
 
 ```
 
-What's happening is simple. The server by default sets up a listening socket with `IPPROTO_TCP` protocol, which is ready to receive Stream data at **127.0.0.1:1069**. It also sets the length of the header which contains the filename and filesize to 40 characters. 
-Except you are sending a **very large** file or a file whose name exceeds 40 characters, you might not really need to change the header size.
+What's happening is simple. The server by default sets up a listening socket with `IPPROTO_TCP` protocol, which is ready to receive Stream data at **127.0.0.1:1069**. It also sets the length of the pickled header which contains a list of filename and filesize to 50 bytes. The 50 bytes will include the header and excerpt of the sent data.
 
 The server also reads **4000** bytes of data at a time into the buffer.
 This is important because the traffic on the network may vary time to time. Increasing the size of the buffer using the `--buff` option will increase the speed of file transfer, but might leaded to some issues if the buffer becomes overwhelmed under large traffic.
@@ -58,7 +57,7 @@ Receiving 200000 bytes at a time in buffer
 
 # Set Stream header length 
 
-Just incase you are doing something wonderful that might make the length of **filename + filesize** be more than 40 characters, use the `--header` flag on **both** the TCP server and client
+Just incase you are doing something wonderful that might make the length of the prickled list of  **filename and filesize** be more than 50 characters, use the `--header` flag on **both** the TCP server and client
 
 
 ```
