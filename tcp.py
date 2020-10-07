@@ -2,8 +2,24 @@ import threading
 import os
 import argparse
 import socket
+import zlib
+from io import BytesIO
+import pickle
 from datetime import datetime
 from tqdm import tqdm
+
+
+def recvHeader(sock, length):
+    data = sock.recv(length)
+    reader = BytesIO(data)
+    try:
+        header = pickle.load(reader)
+        rem = reader.read()
+    except:
+        rem = reader.read()
+    print(header, rem)
+    return [header, rem]
+
 
 
 
@@ -27,9 +43,12 @@ def writeData(sc, name, msg):
         sc.close()
         print("Received {} \n ".format(name))
 
-def readWriteData(sc, name, buffSize, length):
+def readWriteData(sc, name, buffSize, length, rem):
     #Read Data
-    msg = recvfull(sc, buffSize, length, "Receiving {}".format(name))
+    msg = rem + recvfull(sc, buffSize, length, "Receiving {}".format(name))
+
+    #Decompress data
+    msg = zlib.decompress(msg)
 
     #Write data
     writeData(sc, name, msg)
@@ -67,32 +86,39 @@ def server(ip, port, headerLength, buffSize):
 
 
         #Read data header
-        length, name = recvfull(sc, 20, headerLength, "Fetching headers").decode("ascii").split(":")
-        length = int(length)
-        name = name.strip()
+        header = recvHeader(sc, headerLength)
+        length = header[0][1]
+        name = header[0][0].decode()
+        rem = header[1]
+        length = length - len(rem)
 
         #Read and Write data
-        thread = threading.Thread(target=readWriteData, args=(sc, name, buffSize, length), daemon=True)
+        thread = threading.Thread(target=readWriteData, args=(sc, name, buffSize, length, rem), daemon=True)
         thread.start()
 
 
-def client(ip, port, size, name, path, headerLength):
+def client(ip, port, name, path, headerLength):
     '''TCP Client'''
 
     #Create client log file
     if not os.path.isfile('client.log'):
         open('client.log', 'a').close()
 
-    #Set Header
-    header = size + b":" + name
-    header = header + b" "*(headerLength-len(header))
     
-    if len(header) > headerLength:
-        raise ValueError("Content length too short")
-
     #Set message
     with open(path, "rb") as f:
         msg = f.read()
+
+        #Compress data
+        msg = zlib.compress(msg, 7)
+
+        #Set header
+        header = [name, len(msg)]
+        header = pickle.dumps(header)
+
+        if len(header) > headerLength:
+            raise ValueError("Content length too short")
+
         msg = header +  msg
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((ip, port))
@@ -115,7 +141,7 @@ if __name__ == '__main__':
     parser.add_argument("--path", help="Path to file to send", type=str)
     parser.add_argument("--port", help="Port to listen to or connect to. Default:1069", default=1069, type=int)
     parser.add_argument("--ip", help="IP Address to listen to or connect to. Default:127.0.0.1", default="127.0.0.1", type=str)
-    parser.add_argument("--header", help="Header length: size + file_name. Default:40", default=40, type=int)
+    parser.add_argument("--header", help="Header length: len([file_name, size])++. Default:40", default=100, type=int)
     parser.add_argument("--buff", help="Buffer size for storing data", type=int, default=4000)
 
     # Parse arguments
@@ -127,8 +153,7 @@ if __name__ == '__main__':
     elif args.role == "client":
         if not args.path:
             raise ValueError("Please specify file path with --path option")
-        size = str(os.path.getsize(args.path))
         name = os.path.basename(args.path)
-        func(args.ip, args.port,size.encode(), name.encode(), args.path, args.header)
+        func(args.ip, args.port, name.encode(), args.path, args.header)
 
 
